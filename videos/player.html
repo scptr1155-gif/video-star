@@ -30,7 +30,7 @@
   video {
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Keeps aspect ratio. Change to 'cover' for full screen fill */
+    object-fit: contain; 
     outline: none;
     background: #000;
     position: relative;
@@ -39,7 +39,7 @@
 
   /* ==== MODERN LOADING SCREEN ==== */
   .loader-wrapper {
-    position: fixed; /* Fixed ensures it covers the whole iframe perfectly */
+    position: fixed; 
     top: 0;
     left: 0;
     width: 100vw;
@@ -49,8 +49,8 @@
     align-items: center;
     justify-content: center;
     background: #09090b;
-    z-index: 9999; /* Ensures it stays above EVERYTHING */
-    transition: opacity 0.4s ease-out;
+    z-index: 9999; 
+    transition: opacity 0.6s ease-out; /* Yumuşak geçiş süresi */
   }
   .loader-wrapper.hidden {
     opacity: 0;
@@ -180,7 +180,7 @@ async function loadVideo() {
 
   let currentIndex = 0;
 
-  function tryNextTag() {
+  async function tryNextTag() {
     if (currentIndex >= CONFIG.releaseTags.length) {
       return showError('Video Not Found', `
         No video named <b>"${videoId}.mp4"</b> was found in any release.<br><br>
@@ -196,34 +196,45 @@ async function loadVideo() {
     video.autoplay = true;
     video.playsInline = true;
     video.preload = 'auto';
+    video.src = videoUrl;
+    video.load();
 
-    // ==== OYNATICI HAZIR OLDUĞUNDA (VİDEO VERİSİ ALINDIĞINDA) ====
-    // loadeddata yerine 'canplay' kullanıyoruz ki video oynamaya hazır olduğunda ekran açılsın
-    video.addEventListener('canplay', () => {
-      loader.classList.add('hidden');
-      
-      // Sadece bir kere ekleme yapmak için kontrol (çift eklenmeyi önler)
+    // 1. Videonun Hazır Olma Sözü (Promise)
+    const videoReady = new Promise((resolve, reject) => {
+      video.addEventListener('canplay', () => resolve(video), { once: true });
+      video.addEventListener('error', () => reject(new Error('Not found in this tag')), { once: true });
+    });
+
+    // 2. Zamanlayıcı Sözü (5 Saniye Bekleme)
+    const minimumDelay = new Promise(resolve => setTimeout(resolve, 5000));
+
+    try {
+      // İKİSİNİ AYNI ANDA BEKLE: Hem videonun yüklenmesini hem de 5 saniye geçmesini.
+      // Hangisi daha uzun sürerse ekranda o kadar kalır.
+      await Promise.all([videoReady, minimumDelay]);
+
+      // Eğer buraya geldiyse, video hazır ve 5 saniye geçti.
       if (!app.contains(video)) {
         app.appendChild(video);
       }
 
+      // Yükleme ekranını gizle (CSS geçişi ile yumuşak kapanacak)
+      loader.classList.add('hidden');
+
+      // Otomatik oynatmayı başlat (Ses engeline karşı sessiz başlatma koruması)
       let playPromise = video.play();
       if (playPromise !== undefined) {
-        playPromise.catch(error => {
+        playPromise.catch(() => {
           video.muted = true;
           video.play();
         });
       }
-    });
 
-    // ==== EĞER VİDEO HATA VERİRSE ====
-    video.addEventListener('error', () => {
+    } catch (err) {
+      // Video bu etikette yoksa veya yüklenemediyse bir sonrakini dene
       currentIndex++;
-      tryNextTag(); 
-    });
-
-    video.src = videoUrl;
-    video.load();
+      tryNextTag();
+    }
   }
 
   tryNextTag();
