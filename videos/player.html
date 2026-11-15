@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Video Player</title>
 <style>
   /* ==== GENERAL SETTINGS ==== */
@@ -33,19 +33,24 @@
     object-fit: contain; /* Keeps aspect ratio. Change to 'cover' for full screen fill */
     outline: none;
     background: #000;
+    position: relative;
+    z-index: 10;
   }
 
   /* ==== MODERN LOADING SCREEN ==== */
   .loader-wrapper {
-    position: absolute;
-    inset: 0;
+    position: fixed; /* Fixed ensures it covers the whole iframe perfectly */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background: #09090b;
-    z-index: 50;
-    transition: opacity 0.5s ease-out;
+    z-index: 9999; /* Ensures it stays above EVERYTHING */
+    transition: opacity 0.4s ease-out;
   }
   .loader-wrapper.hidden {
     opacity: 0;
@@ -54,8 +59,8 @@
   
   .spinner-box {
     position: relative;
-    width: 80px;
-    height: 80px;
+    width: 70px;
+    height: 70px;
     margin-bottom: 20px;
   }
   .ring {
@@ -65,12 +70,12 @@
     border: 3px solid transparent;
     border-top-color: #6366f1;
     border-radius: 50%;
-    animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    animation: spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
   }
   .ring:nth-child(2) {
     border-top-color: transparent;
     border-bottom-color: #a855f7;
-    animation: spin-reverse 1.5s linear infinite;
+    animation: spin-reverse 1.2s linear infinite;
   }
   .ring-glow {
     position: absolute;
@@ -81,8 +86,8 @@
   }
   .loader-text {
     color: #e2e8f0;
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 0.85rem;
+    font-weight: 600;
     letter-spacing: 2px;
     text-transform: uppercase;
     animation: pulse 1.5s ease-in-out infinite;
@@ -94,13 +99,16 @@
 
   /* ==== STYLISH ERROR SCREEN ==== */
   .error-wrapper {
-    position: absolute;
-    inset: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     background: #09090b;
-    z-index: 40;
+    z-index: 9999;
     padding: 20px;
   }
   .error-card {
@@ -118,15 +126,7 @@
   .error-icon { font-size: 3rem; margin-bottom: 15px; }
   .error-card h2 { color: #f87171; margin-bottom: 10px; font-size: 1.4rem; }
   .error-card p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin-bottom: 15px; }
-  .error-card code { 
-    background: rgba(0,0,0,0.5); 
-    padding: 6px 12px; 
-    border-radius: 8px; 
-    color: #a5b4fc; 
-    font-family: ui-monospace, monospace; 
-    word-break: break-all;
-    display: inline-block;
-  }
+  .error-card code { background: rgba(0,0,0,0.5); padding: 6px 12px; border-radius: 8px; color: #a5b4fc; font-family: ui-monospace, monospace; word-break: break-all; display: inline-block; }
   
   @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 </style>
@@ -150,7 +150,6 @@
 const CONFIG = {
   user:   'scptr1155-gif',
   repo:   'video-star',
-  // List your release tags here (put the latest one first for faster loading)
   releaseTags: ['v1', 'v2', 'v3', 'v4'] 
 };
 // =========================================
@@ -158,7 +157,7 @@ const CONFIG = {
 const app = document.getElementById('app');
 const loader = document.getElementById('loader');
 const params = new URLSearchParams(location.search);
-const videoId = params.get('id'); // e.g., ?id=a
+const videoId = params.get('id');
 
 function showError(title, detail) {
   loader.classList.add('hidden');
@@ -190,24 +189,24 @@ async function loadVideo() {
     }
 
     const tag = CONFIG.releaseTags[currentIndex];
-    // We only look for .mp4 for performance reasons
     const videoUrl = `https://github.com/${CONFIG.user}/${CONFIG.repo}/releases/download/${tag}/${videoId}.mp4`;
 
     const video = document.createElement('video');
-    video.controls = true;       // Show browser's native controls
-    video.autoplay = true;       // Auto-play when ready
-    video.playsInline = true;    // Prevent full-screen on iOS
-    video.preload = 'auto';      // Preload video data
+    video.controls = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.preload = 'auto';
 
-    // ==== WHEN VIDEO IS READY ====
-    video.addEventListener('loadeddata', () => {
-      // Hide loading screen
+    // ==== OYNATICI HAZIR OLDUĞUNDA (VİDEO VERİSİ ALINDIĞINDA) ====
+    // loadeddata yerine 'canplay' kullanıyoruz ki video oynamaya hazır olduğunda ekran açılsın
+    video.addEventListener('canplay', () => {
       loader.classList.add('hidden');
       
-      // Add video to DOM
-      app.appendChild(video);
+      // Sadece bir kere ekleme yapmak için kontrol (çift eklenmeyi önler)
+      if (!app.contains(video)) {
+        app.appendChild(video);
+      }
 
-      // Handle browser autoplay restrictions (mute and try again if blocked)
       let playPromise = video.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
@@ -217,13 +216,12 @@ async function loadVideo() {
       }
     });
 
-    // ==== IF VIDEO FAILS TO LOAD (NOT IN THIS TAG) ====
+    // ==== EĞER VİDEO HATA VERİRSE ====
     video.addEventListener('error', () => {
       currentIndex++;
-      tryNextTag(); // Try next tag (v2, v3...)
+      tryNextTag(); 
     });
 
-    // Set source and start loading
     video.src = videoUrl;
     video.load();
   }
@@ -231,7 +229,7 @@ async function loadVideo() {
   tryNextTag();
 }
 
-// Start the system
+// Start
 loadVideo();
 </script>
 </body>
