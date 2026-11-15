@@ -5,157 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Video Player</title>
 <style>
-  /* ==== GENERAL SETTINGS ==== */
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { 
-    width: 100%; 
-    height: 100%; 
-    background-color: #050505; 
-    overflow: hidden; 
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-
-  /* ==== MAIN CONTAINER ==== */
-  #app {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #000;
-  }
-
-  /* ==== VIDEO ELEMENT ==== */
-  video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain; 
-    outline: none;
-    background: #000;
-    position: relative;
-    z-index: 10;
-  }
-
-  /* ==== MODERN LOADING SCREEN ==== */
-  .loader-wrapper {
-    position: fixed; 
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: #09090b;
-    z-index: 9999; 
-    transition: opacity 0.6s ease-out; 
-  }
-  .loader-wrapper.hidden {
-    opacity: 0;
-    pointer-events: none;
-  }
-  
-  .spinner-box {
-    position: relative;
-    width: 70px;
-    height: 70px;
-    margin-bottom: 20px;
-  }
-  .ring {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border: 3px solid transparent;
-    border-top-color: #6366f1;
-    border-radius: 50%;
-    animation: spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-  }
-  .ring:nth-child(2) {
-    border-top-color: transparent;
-    border-bottom-color: #a855f7;
-    animation: spin-reverse 1.2s linear infinite;
-  }
-  .ring-glow {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%);
-    animation: pulse 2s ease-in-out infinite;
-  }
-  .loader-text {
-    color: #e2e8f0;
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-
+  html, body { width: 100%; height: 100%; background-color: #050505; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  #app { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background: #000; }
+  video { width: 100%; height: 100%; object-fit: contain; outline: none; background: #000; position: relative; z-index: 10; }
+  .loader-wrapper { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #09090b; z-index: 9999; transition: opacity 0.6s ease-out; }
+  .loader-wrapper.hidden { opacity: 0; pointer-events: none; }
+  .spinner-box { position: relative; width: 70px; height: 70px; margin-bottom: 20px; }
+  .ring { position: absolute; width: 100%; height: 100%; border: 3px solid transparent; border-top-color: #6366f1; border-radius: 50%; animation: spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
+  .ring:nth-child(2) { border-top-color: transparent; border-bottom-color: #a855f7; animation: spin-reverse 1.2s linear infinite; }
+  .ring-glow { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%); animation: pulse 2s ease-in-out infinite; }
+  .loader-text { color: #e2e8f0; font-size: 0.85rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; animation: pulse 1.5s ease-in-out infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes spin-reverse { to { transform: rotate(-360deg); } }
   @keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.05); } }
-
-  /* ==== STYLISH ERROR SCREEN ==== */
-  .error-wrapper {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #09090b;
-    z-index: 9999;
-    padding: 20px;
-  }
-  .error-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    padding: 40px;
-    max-width: 500px;
-    width: 100%;
-    text-align: center;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-    animation: slideUp 0.4s ease-out;
-  }
+  .error-wrapper { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background: #09090b; z-index: 9999; padding: 20px; }
+  .error-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 40px; max-width: 500px; width: 100%; text-align: center; backdrop-filter: blur(12px); }
   .error-icon { font-size: 3rem; margin-bottom: 15px; }
   .error-card h2 { color: #f87171; margin-bottom: 10px; font-size: 1.4rem; }
   .error-card p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin-bottom: 15px; }
   .error-card code { background: rgba(0,0,0,0.5); padding: 6px 12px; border-radius: 8px; color: #a5b4fc; font-family: ui-monospace, monospace; word-break: break-all; display: inline-block; }
-  
-  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
-
 <div id="app">
-  <!-- Loading Screen -->
   <div class="loader-wrapper" id="loader">
-    <div class="spinner-box">
-      <div class="ring-glow"></div>
-      <div class="ring"></div>
-      <div class="ring"></div>
-    </div>
+    <div class="spinner-box"><div class="ring-glow"></div><div class="ring"></div><div class="ring"></div></div>
     <div class="loader-text">Loading Video</div>
   </div>
 </div>
-
 <script>
-// ==== SYSTEM CONFIG ====
-const CONFIG = {
-  user:   'scptr1155-gif',
-  repo:   'video-star',
-  branch: 'main',
-  // Yedek Plan (Fallback): Eski sistemi kullananlar için
-  releaseTags: ['v2', 'v1'] 
-};
-// =========================================
-
+const CONFIG = { user: 'scptr1155-gif', repo: 'video-star', branch: 'main', releaseTags: ['v1', 'v2'] };
 const app = document.getElementById('app');
 const loader = document.getElementById('loader');
 const params = new URLSearchParams(location.search);
@@ -165,123 +45,55 @@ function showError(title, detail) {
   loader.classList.add('hidden');
   const errorDiv = document.createElement('div');
   errorDiv.className = 'error-wrapper';
-  errorDiv.innerHTML = `
-    <div class="error-card">
-      <div class="error-icon">⚠️</div>
-      <h2>${title}</h2>
-      <p>${detail}</p>
-    </div>
-  `;
+  errorDiv.innerHTML = `<div class="error-card"><div class="error-icon">⚠️</div><h2>${title}</h2><p>${detail}</p></div>`;
   app.appendChild(errorDiv);
 }
 
 async function loadVideo() {
-  if (!videoId) {
-    return showError('Missing Video ID', 'Please provide a valid video ID.<br><br>Example usage:<br><code>player.html?id=000000001</code>');
-  }
+  if (!videoId) return showError('Missing Video ID', 'Please provide a valid video ID.<br><br>Example usage:<br><code>player.html?id=000000001</code>');
 
-  let currentAttempt = 0;
-  let foundUrl = null;
-
-  // Arama Sırası (Stratejiler)
-  // 1. Yeni Otomatik Sistem (vid.link)
-  // 2. Eski Sistem (Releases -> v2, v1)
-  // 3. links dosyasından okuma (son çare)
   const strategies = [
-    // Strateji 1: Yeni vid.link klasörü
     async () => {
       const url = `https://raw.githubusercontent.com/${CONFIG.user}/${CONFIG.repo}/${CONFIG.branch}/videos/vid.link/${videoId}.mp4`;
       const res = await fetch(url, { method: 'HEAD' });
       if (res.ok) return url;
       throw new Error('Not found in vid.link');
     },
-    
-    // Strateji 2: Releases (Eski yöntem)
     async () => {
       for (const tag of CONFIG.releaseTags) {
         const url = `https://github.com/${CONFIG.user}/${CONFIG.repo}/releases/download/${tag}/${videoId}.mp4`;
-        try {
-          const res = await fetch(url, { method: 'HEAD' });
-          if (res.ok) return url;
-        } catch (e) { /* Devam et */ }
+        try { const res = await fetch(url, { method: 'HEAD' }); if (res.ok) return url; } catch (e) {}
       }
       throw new Error('Not found in releases');
-    },
-
-    // Strateji 3: links dosyası (En eski yöntem)
-    async () => {
-      const res = await fetch(`https://raw.githubusercontent.com/${CONFIG.user}/${CONFIG.repo}/${CONFIG.branch}/links`);
-      if (!res.ok) throw new Error('Links file not found');
-      const text = await res.text();
-      const lines = text.split('\n');
-      for (let line of lines) {
-        line = line.trim();
-        if (line.includes(videoId) && line.includes('.mp4')) {
-          return line;
-        }
-      }
-      throw new Error('Not found in links');
     }
   ];
 
   async function findVideo() {
     for (let i = 0; i < strategies.length; i++) {
-      try {
-        const url = await strategies[i]();
-        if (url) return url;
-      } catch (err) {
-        // Sıradaki stratejiye geç
-      }
+      try { const url = await strategies[i](); if (url) return url; } catch (err) {}
     }
     return null;
   }
 
-  // Arama ve 5 saniyelik bekleme süresini başlat
   const searchPromise = findVideo();
   const minimumDelay = new Promise(resolve => setTimeout(resolve, 5000));
-
   const [videoUrl] = await Promise.all([searchPromise, minimumDelay]);
 
-  if (!videoUrl) {
-    return showError('Video Not Found', `
-      No video named <b>"${videoId}.mp4"</b> was found in any system.<br><br>
-      Please ensure the video is uploaded correctly.
-    `);
-  }
+  if (!videoUrl) return showError('Video Not Found', `No video named <b>"${videoId}.mp4"</b> was found.`);
 
-  // Video bulundu, oynatıcıyı hazırla
   const video = document.createElement('video');
-  video.controls = true;
-  video.autoplay = true;
-  video.playsInline = true;
-  video.preload = 'auto';
-  video.src = videoUrl;
+  video.controls = true; video.autoplay = true; video.playsInline = true; video.preload = 'auto'; video.src = videoUrl;
 
-  // Video oynamaya hazır olduğunda yükleme ekranını kaldır
   video.addEventListener('canplay', () => {
-    if (!app.contains(video)) {
-      app.appendChild(video);
-    }
+    if (!app.contains(video)) app.appendChild(video);
     loader.classList.add('hidden');
-    
-    // Otomatik başlatma engeline karşı (sessize alıp dene)
     let playPromise = video.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        video.muted = true;
-        video.play();
-      });
-    }
+    if (playPromise !== undefined) playPromise.catch(() => { video.muted = true; video.play(); });
   });
 
-  video.addEventListener('error', () => {
-    showError('Playback Error', 'The video was found but could not be played. The format may not be supported.');
-  });
-
+  video.addEventListener('error', () => showError('Playback Error', 'The video was found but could not be played.'));
   video.load();
 }
-
-// Sistemi Başlat
 loadVideo();
 </script>
 </body>
