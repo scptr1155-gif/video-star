@@ -20,68 +20,74 @@
 <div id="wrap"></div>
 
 <script>
-// ==== BURAYI KENDİ REPONA GÖRE AYARLA ====
+// ==== AYARLAR ====
 const CONFIG = {
   user:   'scptr1155-gif',
   repo:   'video-star',
-  branch: 'main',
-  folder: 'videos',
-  ext:    'mp4' // Varsayılan uzantı
+  branch: 'main'
 };
 // =========================================
 
 const wrap = document.getElementById('wrap');
 const params = new URLSearchParams(location.search);
 const videoId = params.get('id');
-const videoExt = params.get('ext') || CONFIG.ext;
 
 function showError(title, detail) {
   wrap.innerHTML = `<div class="msg"><h2>${title}</h2><p>${detail}</p></div>`;
 }
 
-function loadVideo() {
+async function loadVideo() {
   if (!videoId) return showError('Video ID Eksik', 'Kullanım: <code>player.html?id=video1</code>');
-
-  // Dosya adındaki boşlukları ve Türkçe karakterleri URL'ye uygun hale getir
-  const safeId = encodeURIComponent(videoId);
-  const path = CONFIG.folder ? `${CONFIG.folder}/${safeId}.${videoExt}` : `${safeId}.${videoExt}`;
-  
-  const urls = [
-    `https://raw.githubusercontent.com/${CONFIG.user}/${CONFIG.repo}/${CONFIG.branch}/${path}`,
-    `https://cdn.jsdelivr.net/gh/${CONFIG.user}/${CONFIG.repo}@${CONFIG.branch}/${path}`
-  ];
 
   wrap.innerHTML = `<div class="spinner"></div>`;
 
-  const video = document.createElement('video');
-  video.controls = true;
-  video.autoplay = true;
-  video.playsInline = true;
-  video.preload = 'metadata';
+  try {
+    // 1. 'links' dosyasını GitHub Raw'dan çek
+    const linksUrl = `https://raw.githubusercontent.com/${CONFIG.user}/${CONFIG.repo}/${CONFIG.branch}/links`;
+    const response = await fetch(linksUrl);
+    
+    if (!response.ok) throw new Error('links dosyası bulunamadı.');
+    const text = await response.text();
+    
+    // 2. Satır satır oku ve aranan ID'yi bul
+    let videoUrl = null;
+    const lines = text.split('\n');
+    
+    for (let line of lines) {
+      line = line.trim(); // Boşlukları temizle
+      if (!line) continue;
+      
+      // Eğer satır aranan ID'yi içeriyorsa (örneğin 'a.mp4')
+      if (line.includes(videoId)) {
+        videoUrl = line;
+        break;
+      }
+    }
 
-  // İki kaynağı da dene (Raw ve jsDelivr)
-  urls.forEach(url => {
-    const source = document.createElement('source');
-    source.src = url;
-    source.type = videoExt === 'webm' ? 'video/webm' : 'video/mp4';
-    video.appendChild(source);
-  });
+    if (!videoUrl) {
+      throw new Error(`"${videoId}" ID'sine ait bir link 'links' dosyasında bulunamadı.`);
+    }
 
-  video.addEventListener('loadedmetadata', () => {
-    wrap.innerHTML = '';
-    wrap.appendChild(video);
-  });
+    // 3. Video elementini oluştur ve çal
+    const video = document.createElement('video');
+    video.controls = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    video.src = videoUrl;
 
-  video.addEventListener('error', () => {
-    showError('Video Bulunamadı', `
-      Aradığın ID: <code>${videoId}</code><br><br>
-      Dosyanın repoda şu yolda olduğundan emin ol:<br>
-      <code>${CONFIG.folder}/${videoId}.${videoExt}</code><br><br>
-      <b>Not:</b> Dosya adında boşluk varsa, GitHub'da ismini <b>alt çizgi (_)</b> ile değiştir.
-    `);
-  });
+    video.addEventListener('loadedmetadata', () => {
+      wrap.innerHTML = '';
+      wrap.appendChild(video);
+    });
 
-  video.load();
+    video.addEventListener('error', () => {
+      showError('Video Oynatılamadı', `Link doğru ama video yüklenemedi:<br><code>${videoUrl}</code>`);
+    });
+
+  } catch (err) {
+    showError('Hata Oluştu', err.message);
+  }
 }
 
 loadVideo();
