@@ -2,96 +2,228 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Video Player</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Modern Video Player</title>
 <style>
-  html, body { margin: 0; height: 100%; background-color: #050508; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  #wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-  video { width: 100%; height: 100%; outline: none; background: #000; }
+  /* ==== GENEL AYARLAR ==== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { 
+    width: 100%; 
+    height: 100%; 
+    background-color: #050505; 
+    overflow: hidden; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
 
-  /* ✨ Daha Akıcı ve Modern Yükleme Ekranı */
-  .loader-container { position: relative; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; }
-  .glow { position: absolute; width: 100%; height: 100%; background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%); border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
-  .spinner { position: absolute; width: 100%; height: 100%; border: 3px solid transparent; border-top-color: #6366f1; border-right-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; }
-  .spinner-inner { position: absolute; width: 70%; height: 70%; border: 3px solid transparent; border-bottom-color: #a5b4fc; border-radius: 50%; animation: spin-reverse 1.5s linear infinite; }
-  .text { color: #a5b4fc; font-size: 0.85rem; letter-spacing: 2px; font-weight: 600; position: absolute; bottom: -40px; animation: pulse 1.5s ease-in-out infinite; text-transform: uppercase; }
+  /* ==== ANA KAPSAYICI ==== */
+  #app {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+  }
+
+  /* ==== VİDEO ELEMENTİ ==== */
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Videoyu kırpmadan ekrana sığdırır. Ekranı tamamen kaplaması için 'cover' yapabilirsin. */
+    outline: none;
+    background: #000;
+  }
+
+  /* ==== MODERN YÜKLEME EKRANI ==== */
+  .loader-wrapper {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #09090b;
+    z-index: 50;
+    transition: opacity 0.5s ease-out;
+  }
+  .loader-wrapper.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
   
-  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-  @keyframes spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+  .spinner-box {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+  }
+  .ring {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 3px solid transparent;
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+  .ring:nth-child(2) {
+    border-top-color: transparent;
+    border-bottom-color: #a855f7;
+    animation: spin-reverse 1.5s linear infinite;
+  }
+  .ring-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .loader-text {
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes spin-reverse { to { transform: rotate(-360deg); } }
   @keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.05); } }
 
-  .msg { color: #fff; text-align: center; padding: 40px; background: rgba(255, 255, 255, 0.03); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px); max-width: 600px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
-  .msg h2 { color: #f87171; margin-top: 0; font-size: 1.5rem; display: flex; justify-content: center; align-items: center; gap: 10px; }
-  .msg code { background: rgba(0,0,0,0.6); padding: 6px 12px; border-radius: 8px; color: #a5b4fc; font-family: ui-monospace, monospace; }
+  /* ==== ŞIK HATA EKRANI ==== */
+  .error-wrapper {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #09090b;
+    z-index: 40;
+    padding: 20px;
+  }
+  .error-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    animation: slideUp 0.4s ease-out;
+  }
+  .error-icon { font-size: 3rem; margin-bottom: 15px; }
+  .error-card h2 { color: #f87171; margin-bottom: 10px; font-size: 1.4rem; }
+  .error-card p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin-bottom: 15px; }
+  .error-card code { 
+    background: rgba(0,0,0,0.5); 
+    padding: 6px 12px; 
+    border-radius: 8px; 
+    color: #a5b4fc; 
+    font-family: ui-monospace, monospace; 
+    word-break: break-all;
+    display: inline-block;
+  }
+  
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
-<div id="wrap"></div>
+
+<div id="app">
+  <!-- Yükleme Ekranı -->
+  <div class="loader-wrapper" id="loader">
+    <div class="spinner-box">
+      <div class="ring-glow"></div>
+      <div class="ring"></div>
+      <div class="ring"></div>
+    </div>
+    <div class="loader-text">Video Yükleniyor</div>
+  </div>
+</div>
 
 <script>
-// ==== AYARLAR ====
+// ==== SİSTEM AYARLARI ====
 const CONFIG = {
   user:   'scptr1155-gif',
   repo:   'video-star',
-  // Videonu en son hangi sürüme (etiket) yüklediysen onu en başa yaz.
-  releaseTags: ['v1', 'v2', 'v3'] 
+  // Videonun bulunduğu sürüm etiketlerini buraya yaz (En son yüklediğini en başa al)
+  releaseTags: ['v1', 'v2', 'v3', 'v4'] 
 };
-// =================
+// =========================================
 
-const wrap = document.getElementById('wrap');
+const app = document.getElementById('app');
+const loader = document.getElementById('loader');
 const params = new URLSearchParams(location.search);
-const videoId = params.get('id');
+const videoId = params.get('id'); // Örn: ?id=a
 
-function showLoader() {
-  wrap.innerHTML = `
-    <div class="loader-container">
-      <div class="glow"></div>
-      <div class="spinner"></div>
-      <div class="spinner-inner"></div>
-      <div class="text">Yükleniyor</div>
-    </div>`;
+function showError(title, detail) {
+  loader.classList.add('hidden');
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error-wrapper';
+  errorDiv.innerHTML = `
+    <div class="error-card">
+      <div class="error-icon">⚠️</div>
+      <h2>${title}</h2>
+      <p>${detail}</p>
+    </div>
+  `;
+  app.appendChild(errorDiv);
 }
 
-function showError(detail) {
-  wrap.innerHTML = `<div class="msg"><h2>⚠️ Video Bulunamadı</h2><p>${detail}</p></div>`;
-}
+async function loadVideo() {
+  if (!videoId) {
+    return showError('Video ID Eksik', 'Lütfen geçerli bir video ID girin.<br><br>Örnek Kullanım:<br><code>player.html?id=video1</code>');
+  }
 
-function playVideo() {
-  if (!videoId) return showError('Lütfen bir video ID girin.<br>Kullanım: <code>?id=video1</code>');
-
-  showLoader();
-
-  // Videosu aranacak sürümler
-  const tags = CONFIG.releaseTags;
   let currentIndex = 0;
 
   function tryNextTag() {
-    if (currentIndex >= tags.length) {
-      return showError(`"${videoId}.mp4" adında bir video hiçbir sürümde bulunamadı.`);
+    if (currentIndex >= CONFIG.releaseTags.length) {
+      return showError('Video Bulunamadı', `
+        <b>"${videoId}.mp4"</b> adında bir video hiçbir sürümde (Release) bulunamadı.<br><br>
+        Lütfen videonun adını ve GitHub Releases bölümüne yüklendiğinden emin ol.
+      `);
     }
 
-    const tag = tags[currentIndex];
-    // Doğrudan mp4 linki oluştur (CORS kontrolü yok, direkt yüklemeye çalışır)
+    const tag = CONFIG.releaseTags[currentIndex];
+    // Sadece mp4 arıyoruz (Sistem hızlı olsun diye)
     const videoUrl = `https://github.com/${CONFIG.user}/${CONFIG.repo}/releases/download/${tag}/${videoId}.mp4`;
 
     const video = document.createElement('video');
-    video.controls = true;
-    video.autoplay = true;
-    video.playsInline = true;
-    video.preload = 'auto'; // Hemen indirmeye başla
-    
-    // Video başarıyla yüklendiğinde
+    video.controls = true;       // Tarayıcının modern kontrol barını göster
+    video.autoplay = true;       // Otomatik başlat
+    video.playsInline = true;    // Mobilde (iOS) tam ekran almadan oynat
+    video.preload = 'auto';      // Videoyu arka planda hızlıca indirmeye başla
+
+    // ==== OYNATICI HAZIR OLDUĞUNDA ====
     video.addEventListener('loadeddata', () => {
-      wrap.innerHTML = '';
-      wrap.appendChild(video);
+      // Yükleme ekranını gizle
+      loader.classList.add('hidden');
+      
+      // Videoyu ekrana ekle
+      app.appendChild(video);
+
+      // Tarayıcı autoplay'i engellerse (sesli olduğu için vs.) sessize alıp tekrar dene
+      let playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          video.muted = true;
+          video.play();
+        });
+      }
     });
 
-    // Hata olursa (dosya o sürümde yoksa) bir sonraki sürümü dene
+    // ==== EĞER VİDEO BU SÜRÜMDE YOKSA (HATA VERİRSE) ====
     video.addEventListener('error', () => {
       currentIndex++;
-      tryNextTag();
+      tryNextTag(); // Sıradaki etiketi (v2, v3...) dene
     });
 
+    // Kaynağı ata ve yüklemeyi başlat
     video.src = videoUrl;
     video.load();
   }
@@ -99,7 +231,8 @@ function playVideo() {
   tryNextTag();
 }
 
-playVideo();
+// Sistemi Çalıştır
+loadVideo();
 </script>
 </body>
 </html>
