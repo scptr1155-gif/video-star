@@ -1,8 +1,8 @@
-name: Upload Video to vid.link
+name: Move Video to vid.link
 
 on:
   repository_dispatch:
-    types: [upload_video]
+    types: [move_video_to_folder]
 
 jobs:
   build:
@@ -15,20 +15,16 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Videoyu İndir
+      - name: Videoyu Release'den İndir ve Klasöre Koy
         run: |
           mkdir -p videos/vid.link
-          curl -L -o videos/vid.link/${{ github.event.client_payload.video_id }}.mp4 "${{ github.event.client_payload.video_url }}"
+          # Videoyu release'den indir
+          curl -L -o videos/vid.link/${{ github.event.client_payload.video_id }}.mp4 "https://github.com/${{ github.repository }}/releases/download/${{ github.event.client_payload.tag_name }}/${{ github.event.client_payload.video_id }}.mp4"
 
-      - name: Links Dosyasını Güncelle
-        run: |
-          if [ ! -f links ]; then touch links; fi
-          echo "https://raw.githubusercontent.com/scptr1155-gif/video-star/main/videos/vid.link/${{ github.event.client_payload.video_id }}.mp4" >> links
-
-      - name: Değişiklikleri GitHub'a Kaydet (Push)
+      - name: Değişiklikleri GitHub'a Kaydet
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Yeni video eklendi: ${{ github.event.client_payload.video_id }}"
+          git commit -m "Yeni video vid.link klasörüne eklendi: ${{ github.event.client_payload.video_id }}"
           git push
