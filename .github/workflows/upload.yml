@@ -18,7 +18,6 @@ jobs:
       - name: Videoyu Release'den İndir ve Klasöre Koy
         run: |
           mkdir -p videos/vid.link
-          # Videoyu release'den indir
           curl -L -o videos/vid.link/${{ github.event.client_payload.video_id }}.mp4 "https://github.com/${{ github.repository }}/releases/download/${{ github.event.client_payload.tag_name }}/${{ github.event.client_payload.video_id }}.mp4"
 
       - name: Değişiklikleri GitHub'a Kaydet
