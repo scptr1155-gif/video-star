@@ -1,1 +1,102 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Player</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; padding: 20px; box-sizing: border-box;
+    font-family: system-ui, sans-serif; color: #fff;
+  }
+  #app { display: flex; flex-direction: column; align-items: center; justify-content: center; max-width: 100%; }
+  video { max-width: 100%; max-height: 85vh; border-radius: 12px; }
+  .msg { text-align: center; color: #999; padding: 30px; max-width: 600px; }
+  .msg h2 { color: #f87171; margin: 0 0 10px; }
+  .msg code { background: #1a1a24; padding: 2px 8px; border-radius: 6px; color: #a5b4fc; font-size: 0.85em; word-break: break-all; display: inline-block; margin: 2px 0; }
+  .spinner {
+    width: 40px; height: 40px; margin-bottom: 16px;
+    border: 3px solid #222; border-top-color: #6366f1;
+    border-radius: 50%; animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
 
+<!-- ============ AYARLAR ============ -->
+<script>
+const CONFIG = {
+  user:   'scptr1155-gif',
+  repo:   'video-star',
+  branch: 'main',
+  folder: 'videos',       // videolar "videos/" klasöründe değilse buraya dikkat
+  ext:    'mp4'
+};
+</script>
+<!-- ================================ -->
+
+<div id="app"></div>
+
+<script>
+const app    = document.getElementById('app');
+const params = new URLSearchParams(location.search);
+const id     = params.get('id');
+
+function showError(title, detail) {
+  app.innerHTML = `<div class="msg"><h2>${title}</h2><p>${detail}</p></div>`;
+}
+
+function buildCandidates(videoId) {
+  const { user, repo, branch, folder, ext } = CONFIG;
+  const paths = folder
+    ? [`${folder}/${videoId}.${ext}`, `${videoId}.${ext}`]  // önce klasör, sonra kök
+    : [`${videoId}.${ext}`];
+
+  const urls = [];
+  for (const p of paths) {
+    urls.push(`https://raw.githubusercontent.com/${user}/${repo}/${branch}/${p}`);
+    urls.push(`https://cdn.jsdelivr.net/gh/${user}/${repo}@${branch}/${p}`);
+  }
+  return urls;
+}
+
+function tryLoad(urls, idx = 0) {
+  if (idx >= urls.length) {
+    showError('Video bulunamadı', `ID: <code>${id}</code><br><br>Denenen tüm URL'ler:<br>${urls.map(u => `<code>${u}</code>`).join('<br>')}`);
+    return;
+  }
+
+  if (idx === 0) {
+    app.innerHTML = `<div class="spinner"></div><div class="msg">Yükleniyor: <code>${id}</code></div>`;
+  }
+
+  const video = document.createElement('video');
+  video.controls    = true;
+  video.autoplay    = true;
+  video.playsInline = true;
+
+  video.addEventListener('loadedmetadata', () => {
+    app.innerHTML = '';
+    app.appendChild(video);
+  }, { once: true });
+
+  video.addEventListener('error', () => {
+    video.removeAttribute('src');
+    video.load();
+    tryLoad(urls, idx + 1);   // sıradaki URL'yi dene
+  }, { once: true });
+
+  video.src = urls[idx];
+}
+
+if (!id) {
+  showError('Video ID gerekli', 'Kullanım: <code>player.html?id=video1</code>');
+} else {
+  tryLoad(buildCandidates(id));
+}
+</script>
+</body>
+</html>
