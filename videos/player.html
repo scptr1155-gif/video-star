@@ -50,7 +50,7 @@
     justify-content: center;
     background: #09090b;
     z-index: 9999; 
-    transition: opacity 0.6s ease-out; /* Yumuşak geçiş süresi */
+    transition: opacity 0.6s ease-out; 
   }
   .loader-wrapper.hidden {
     opacity: 0;
@@ -150,7 +150,9 @@
 const CONFIG = {
   user:   'scptr1155-gif',
   repo:   'video-star',
-  releaseTags: ['v1', 'v2', 'v3', 'v4'] 
+  branch: 'main',
+  // Yedek Plan (Fallback): Eski sistemi kullananlar için
+  releaseTags: ['v2', 'v1'] 
 };
 // =========================================
 
@@ -175,72 +177,111 @@ function showError(title, detail) {
 
 async function loadVideo() {
   if (!videoId) {
-    return showError('Missing Video ID', 'Please provide a valid video ID.<br><br>Example usage:<br><code>player.html?id=video1</code>');
+    return showError('Missing Video ID', 'Please provide a valid video ID.<br><br>Example usage:<br><code>player.html?id=000000001</code>');
   }
 
-  let currentIndex = 0;
+  let currentAttempt = 0;
+  let foundUrl = null;
 
-  async function tryNextTag() {
-    if (currentIndex >= CONFIG.releaseTags.length) {
-      return showError('Video Not Found', `
-        No video named <b>"${videoId}.mp4"</b> was found in any release.<br><br>
-        Please ensure the video is uploaded to GitHub Releases with the correct filename.
-      `);
-    }
-
-    const tag = CONFIG.releaseTags[currentIndex];
-    const videoUrl = `https://github.com/${CONFIG.user}/${CONFIG.repo}/releases/download/${tag}/${videoId}.mp4`;
-
-    const video = document.createElement('video');
-    video.controls = true;
-    video.autoplay = true;
-    video.playsInline = true;
-    video.preload = 'auto';
-    video.src = videoUrl;
-    video.load();
-
-    // 1. Videonun Hazır Olma Sözü (Promise)
-    const videoReady = new Promise((resolve, reject) => {
-      video.addEventListener('canplay', () => resolve(video), { once: true });
-      video.addEventListener('error', () => reject(new Error('Not found in this tag')), { once: true });
-    });
-
-    // 2. Zamanlayıcı Sözü (5 Saniye Bekleme)
-    const minimumDelay = new Promise(resolve => setTimeout(resolve, 5000));
-
-    try {
-      // İKİSİNİ AYNI ANDA BEKLE: Hem videonun yüklenmesini hem de 5 saniye geçmesini.
-      // Hangisi daha uzun sürerse ekranda o kadar kalır.
-      await Promise.all([videoReady, minimumDelay]);
-
-      // Eğer buraya geldiyse, video hazır ve 5 saniye geçti.
-      if (!app.contains(video)) {
-        app.appendChild(video);
+  // Arama Sırası (Stratejiler)
+  // 1. Yeni Otomatik Sistem (vid.link)
+  // 2. Eski Sistem (Releases -> v2, v1)
+  // 3. links dosyasından okuma (son çare)
+  const strategies = [
+    // Strateji 1: Yeni vid.link klasörü
+    async () => {
+      const url = `https://raw.githubusercontent.com/${CONFIG.user}/${CONFIG.repo}/${CONFIG.branch}/videos/vid.link/${videoId}.mp4`;
+      const res = await fetch(url, { method: 'HEAD' });
+      if (res.ok) return url;
+      throw new Error('Not found in vid.link');
+    },
+    
+    // Strateji 2: Releases (Eski yöntem)
+    async () => {
+      for (const tag of CONFIG.releaseTags) {
+        const url = `https://github.com/${CONFIG.user}/${CONFIG.repo}/releases/download/${tag}/${videoId}.mp4`;
+        try {
+          const res = await fetch(url, { method: 'HEAD' });
+          if (res.ok) return url;
+        } catch (e) { /* Devam et */ }
       }
+      throw new Error('Not found in releases');
+    },
 
-      // Yükleme ekranını gizle (CSS geçişi ile yumuşak kapanacak)
-      loader.classList.add('hidden');
-
-      // Otomatik oynatmayı başlat (Ses engeline karşı sessiz başlatma koruması)
-      let playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          video.muted = true;
-          video.play();
-        });
+    // Strateji 3: links dosyası (En eski yöntem)
+    async () => {
+      const res = await fetch(`https://raw.githubusercontent.com/${CONFIG.user}/${CONFIG.repo}/${CONFIG.branch}/links`);
+      if (!res.ok) throw new Error('Links file not found');
+      const text = await res.text();
+      const lines = text.split('\n');
+      for (let line of lines) {
+        line = line.trim();
+        if (line.includes(videoId) && line.includes('.mp4')) {
+          return line;
+        }
       }
-
-    } catch (err) {
-      // Video bu etikette yoksa veya yüklenemediyse bir sonrakini dene
-      currentIndex++;
-      tryNextTag();
+      throw new Error('Not found in links');
     }
+  ];
+
+  async function findVideo() {
+    for (let i = 0; i < strategies.length; i++) {
+      try {
+        const url = await strategies[i]();
+        if (url) return url;
+      } catch (err) {
+        // Sıradaki stratejiye geç
+      }
+    }
+    return null;
   }
 
-  tryNextTag();
+  // Arama ve 5 saniyelik bekleme süresini başlat
+  const searchPromise = findVideo();
+  const minimumDelay = new Promise(resolve => setTimeout(resolve, 5000));
+
+  const [videoUrl] = await Promise.all([searchPromise, minimumDelay]);
+
+  if (!videoUrl) {
+    return showError('Video Not Found', `
+      No video named <b>"${videoId}.mp4"</b> was found in any system.<br><br>
+      Please ensure the video is uploaded correctly.
+    `);
+  }
+
+  // Video bulundu, oynatıcıyı hazırla
+  const video = document.createElement('video');
+  video.controls = true;
+  video.autoplay = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.src = videoUrl;
+
+  // Video oynamaya hazır olduğunda yükleme ekranını kaldır
+  video.addEventListener('canplay', () => {
+    if (!app.contains(video)) {
+      app.appendChild(video);
+    }
+    loader.classList.add('hidden');
+    
+    // Otomatik başlatma engeline karşı (sessize alıp dene)
+    let playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        video.muted = true;
+        video.play();
+      });
+    }
+  });
+
+  video.addEventListener('error', () => {
+    showError('Playback Error', 'The video was found but could not be played. The format may not be supported.');
+  });
+
+  video.load();
 }
 
-// Start
+// Sistemi Başlat
 loadVideo();
 </script>
 </body>
