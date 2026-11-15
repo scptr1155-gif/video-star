@@ -5,15 +5,94 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Video Player</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-  body { display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; }
-  #wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-  video { width: 100%; height: 100%; max-height: 100vh; outline: none; }
-  .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite; }
+  /* Genel Sayfa Ayarları */
+  html, body { 
+    margin: 0; 
+    height: 100%; 
+    background-color: #0a0a0f; /* Tam siyah yerine hafif koyu bir arka plan */
+    overflow: hidden; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* İçerik Kapsayıcısı */
+  #wrap { 
+    width: 100%; 
+    height: 100%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    flex-direction: column; 
+    position: relative;
+  }
+
+  /* Modern Video Oynatıcı */
+  video { 
+    width: 100%; 
+    height: 100%; 
+    max-height: 100vh; 
+    outline: none; 
+    background: #000;
+    /* Hafif bir gölge efekti */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+  }
+
+  /* Şık Yükleme Animasyonu (Spinner) */
+  .spinner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #6366f1; /* Modern bir mor/mavi tonu */
+    border-radius: 50%;
+    animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  .spinner-text {
+    color: #a5b4fc;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .msg { color: #fff; text-align: center; padding: 20px; line-height: 1.6; }
-  .msg h2 { color: #f87171; }
-  .msg code { background: #1a1a24; padding: 4px 8px; border-radius: 6px; color: #a5b4fc; font-size: 0.9em; word-break: break-all; }
+  @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+  /* Modern Hata Ekranı */
+  .msg { 
+    color: #fff; 
+    text-align: center; 
+    padding: 40px 20px; 
+    line-height: 1.6; 
+    max-width: 600px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  }
+  .msg h2 { 
+    color: #f87171; 
+    margin-top: 0;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .msg code { 
+    background: rgba(0,0,0,0.5); 
+    padding: 6px 12px; 
+    border-radius: 8px; 
+    color: #a5b4fc; 
+    font-size: 0.9em; 
+    word-break: break-all; 
+    display: inline-block;
+    margin-top: 5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
 </style>
 </head>
 <body>
@@ -33,20 +112,31 @@ const params = new URLSearchParams(location.search);
 const videoId = params.get('id');
 
 function showError(title, detail) {
-  wrap.innerHTML = `<div class="msg"><h2>${title}</h2><p>${detail}</p></div>`;
+  wrap.innerHTML = `
+    <div class="msg">
+      <h2>⚠️ ${title}</h2>
+      <p>${detail}</p>
+    </div>
+  `;
 }
 
 async function loadVideo() {
-  if (!videoId) return showError('Video ID Eksik', 'Kullanım: <code>player.html?id=video1</code>');
+  if (!videoId) return showError('Video ID Eksik', 'Lütfen geçerli bir video ID girin.<br>Örnek Kullanım:<br><code>player.html?id=video1</code>');
 
-  wrap.innerHTML = `<div class="spinner"></div>`;
+  // Yükleme Ekranını Göster
+  wrap.innerHTML = `
+    <div class="spinner-container">
+      <div class="spinner"></div>
+      <div class="spinner-text">Video Yükleniyor...</div>
+    </div>
+  `;
 
   try {
     // 1. 'links' dosyasını GitHub Raw'dan çek
     const linksUrl = `https://raw.githubusercontent.com/${CONFIG.user}/${CONFIG.repo}/${CONFIG.branch}/links`;
     const response = await fetch(linksUrl);
     
-    if (!response.ok) throw new Error('links dosyası bulunamadı.');
+    if (!response.ok) throw new Error('Sistem dosyası (links) bulunamadı.');
     const text = await response.text();
     
     // 2. Satır satır oku ve aranan ID'yi bul
@@ -54,10 +144,9 @@ async function loadVideo() {
     const lines = text.split('\n');
     
     for (let line of lines) {
-      line = line.trim(); // Boşlukları temizle
+      line = line.trim();
       if (!line) continue;
       
-      // Eğer satır aranan ID'yi içeriyorsa (örneğin 'a.mp4')
       if (line.includes(videoId)) {
         videoUrl = line;
         break;
@@ -65,28 +154,30 @@ async function loadVideo() {
     }
 
     if (!videoUrl) {
-      throw new Error(`"${videoId}" ID'sine ait bir link 'links' dosyasında bulunamadı.`);
+      throw new Error(`<b>"${videoId}"</b> ID'sine ait bir video linki bulunamadı. Lütfen <code>links</code> dosyasını kontrol edin.`);
     }
 
-    // 3. Video elementini oluştur ve çal
+    // 3. Video elementini oluştur
     const video = document.createElement('video');
     video.controls = true;
     video.autoplay = true;
     video.playsInline = true;
-    video.preload = 'metadata';
+    video.preload = 'auto';
     video.src = videoUrl;
 
-    video.addEventListener('loadedmetadata', () => {
+    // Video oynamaya hazır olduğunda spinner'ı sil, videoyu göster
+    video.addEventListener('loadeddata', () => {
       wrap.innerHTML = '';
       wrap.appendChild(video);
     });
 
+    // Eğer video yüklenirken hata olursa
     video.addEventListener('error', () => {
-      showError('Video Oynatılamadı', `Link doğru ama video yüklenemedi:<br><code>${videoUrl}</code>`);
+      showError('Oynatma Hatası', `Video dosyasına ulaşılamadı veya tarayıcı bu formatı desteklemiyor.<br><br>Denenen Link:<br><code>${videoUrl}</code>`);
     });
 
   } catch (err) {
-    showError('Hata Oluştu', err.message);
+    showError('Sistem Hatası', err.message);
   }
 }
 
