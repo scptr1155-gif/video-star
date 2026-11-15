@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Modern Video Player</title>
+<title>Video Player</title>
 <style>
-  /* ==== GENEL AYARLAR ==== */
+  /* ==== GENERAL SETTINGS ==== */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { 
     width: 100%; 
@@ -15,7 +15,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
 
-  /* ==== ANA KAPSAYICI ==== */
+  /* ==== MAIN CONTAINER ==== */
   #app {
     position: relative;
     width: 100vw;
@@ -26,16 +26,16 @@
     background: #000;
   }
 
-  /* ==== VİDEO ELEMENTİ ==== */
+  /* ==== VIDEO ELEMENT ==== */
   video {
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Videoyu kırpmadan ekrana sığdırır. Ekranı tamamen kaplaması için 'cover' yapabilirsin. */
+    object-fit: contain; /* Keeps aspect ratio. Change to 'cover' for full screen fill */
     outline: none;
     background: #000;
   }
 
-  /* ==== MODERN YÜKLEME EKRANI ==== */
+  /* ==== MODERN LOADING SCREEN ==== */
   .loader-wrapper {
     position: absolute;
     inset: 0;
@@ -92,7 +92,7 @@
   @keyframes spin-reverse { to { transform: rotate(-360deg); } }
   @keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.05); } }
 
-  /* ==== ŞIK HATA EKRANI ==== */
+  /* ==== STYLISH ERROR SCREEN ==== */
   .error-wrapper {
     position: absolute;
     inset: 0;
@@ -134,23 +134,23 @@
 <body>
 
 <div id="app">
-  <!-- Yükleme Ekranı -->
+  <!-- Loading Screen -->
   <div class="loader-wrapper" id="loader">
     <div class="spinner-box">
       <div class="ring-glow"></div>
       <div class="ring"></div>
       <div class="ring"></div>
     </div>
-    <div class="loader-text">Video Yükleniyor</div>
+    <div class="loader-text">Loading Video</div>
   </div>
 </div>
 
 <script>
-// ==== SİSTEM AYARLARI ====
+// ==== SYSTEM CONFIG ====
 const CONFIG = {
   user:   'scptr1155-gif',
   repo:   'video-star',
-  // Videonun bulunduğu sürüm etiketlerini buraya yaz (En son yüklediğini en başa al)
+  // List your release tags here (put the latest one first for faster loading)
   releaseTags: ['v1', 'v2', 'v3', 'v4'] 
 };
 // =========================================
@@ -158,7 +158,7 @@ const CONFIG = {
 const app = document.getElementById('app');
 const loader = document.getElementById('loader');
 const params = new URLSearchParams(location.search);
-const videoId = params.get('id'); // Örn: ?id=a
+const videoId = params.get('id'); // e.g., ?id=a
 
 function showError(title, detail) {
   loader.classList.add('hidden');
@@ -176,38 +176,38 @@ function showError(title, detail) {
 
 async function loadVideo() {
   if (!videoId) {
-    return showError('Video ID Eksik', 'Lütfen geçerli bir video ID girin.<br><br>Örnek Kullanım:<br><code>player.html?id=video1</code>');
+    return showError('Missing Video ID', 'Please provide a valid video ID.<br><br>Example usage:<br><code>player.html?id=video1</code>');
   }
 
   let currentIndex = 0;
 
   function tryNextTag() {
     if (currentIndex >= CONFIG.releaseTags.length) {
-      return showError('Video Bulunamadı', `
-        <b>"${videoId}.mp4"</b> adında bir video hiçbir sürümde (Release) bulunamadı.<br><br>
-        Lütfen videonun adını ve GitHub Releases bölümüne yüklendiğinden emin ol.
+      return showError('Video Not Found', `
+        No video named <b>"${videoId}.mp4"</b> was found in any release.<br><br>
+        Please ensure the video is uploaded to GitHub Releases with the correct filename.
       `);
     }
 
     const tag = CONFIG.releaseTags[currentIndex];
-    // Sadece mp4 arıyoruz (Sistem hızlı olsun diye)
+    // We only look for .mp4 for performance reasons
     const videoUrl = `https://github.com/${CONFIG.user}/${CONFIG.repo}/releases/download/${tag}/${videoId}.mp4`;
 
     const video = document.createElement('video');
-    video.controls = true;       // Tarayıcının modern kontrol barını göster
-    video.autoplay = true;       // Otomatik başlat
-    video.playsInline = true;    // Mobilde (iOS) tam ekran almadan oynat
-    video.preload = 'auto';      // Videoyu arka planda hızlıca indirmeye başla
+    video.controls = true;       // Show browser's native controls
+    video.autoplay = true;       // Auto-play when ready
+    video.playsInline = true;    // Prevent full-screen on iOS
+    video.preload = 'auto';      // Preload video data
 
-    // ==== OYNATICI HAZIR OLDUĞUNDA ====
+    // ==== WHEN VIDEO IS READY ====
     video.addEventListener('loadeddata', () => {
-      // Yükleme ekranını gizle
+      // Hide loading screen
       loader.classList.add('hidden');
       
-      // Videoyu ekrana ekle
+      // Add video to DOM
       app.appendChild(video);
 
-      // Tarayıcı autoplay'i engellerse (sesli olduğu için vs.) sessize alıp tekrar dene
+      // Handle browser autoplay restrictions (mute and try again if blocked)
       let playPromise = video.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
@@ -217,13 +217,13 @@ async function loadVideo() {
       }
     });
 
-    // ==== EĞER VİDEO BU SÜRÜMDE YOKSA (HATA VERİRSE) ====
+    // ==== IF VIDEO FAILS TO LOAD (NOT IN THIS TAG) ====
     video.addEventListener('error', () => {
       currentIndex++;
-      tryNextTag(); // Sıradaki etiketi (v2, v3...) dene
+      tryNextTag(); // Try next tag (v2, v3...)
     });
 
-    // Kaynağı ata ve yüklemeyi başlat
+    // Set source and start loading
     video.src = videoUrl;
     video.load();
   }
@@ -231,7 +231,7 @@ async function loadVideo() {
   tryNextTag();
 }
 
-// Sistemi Çalıştır
+// Start the system
 loadVideo();
 </script>
 </body>
